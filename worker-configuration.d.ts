@@ -18,4 +18,6 @@ interface Env {
   XAI_API_KEY: string;
   PERPLEXITY_API_KEY: string;
   AWS_BEDROCK_CONFIG: string;
+  REDBUILDER_API_KEY: string;
+  REDBUILDER_API_BASE_URL: string;
 }
