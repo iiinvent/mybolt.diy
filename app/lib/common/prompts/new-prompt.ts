@@ -72,16 +72,9 @@ The year is 2025.
     supabase?.credentials?.supabaseUrl &&
     supabase?.credentials?.anonKey
       ? `
-    Create .env file if it doesn't exist${
-      supabase?.isConnected &&
-      supabase?.hasSelectedProject &&
-      supabase?.credentials?.supabaseUrl &&
-      supabase?.credentials?.anonKey
-        ? ` with:
+    Create .env file if it doesn't exist with:
       VITE_SUPABASE_URL=${supabase.credentials.supabaseUrl}
-      VITE_SUPABASE_ANON_KEY=${supabase.credentials.anonKey}`
-        : '.'
-    }
+      VITE_SUPABASE_ANON_KEY=${supabase.credentials.anonKey}
     DATA PRESERVATION REQUIREMENTS:
       - DATA INTEGRITY IS HIGHEST PRIORITY - users must NEVER lose data
       - FORBIDDEN: Destructive operations (DROP, DELETE) that could cause data loss

@@ -7,7 +7,6 @@ import { bufferWatchEvents } from '~/utils/buffer';
 import { WORK_DIR } from '~/utils/constants';
 import { computeFileModifications } from '~/utils/diff';
 import { createScopedLogger } from '~/utils/logger';
-import { unreachable } from '~/utils/unreachable';
 import {
   addLockedFile,
   removeLockedFile,
@@ -557,11 +556,18 @@ export class FilesStore {
         throw new Error(`EINVAL: invalid file path, write '${relativePath}'`);
       }
 
-      const oldContent = this.getFile(filePath)?.content;
-
-      if (!oldContent && oldContent !== '') {
-        unreachable('Expected content to be defined');
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`EINVAL: invalid file path, write '${filePath}'`);
       }
+
+      const existingFile = this.getFile(filePath);
+
+      if (!existingFile) {
+        await this.createFile(filePath, content);
+        return;
+      }
+
+      const oldContent = existingFile.content;
 
       await webcontainer.fs.writeFile(relativePath, content);
 
@@ -777,6 +783,10 @@ export class FilesStore {
         throw new Error(`EINVAL: invalid file path, create '${relativePath}'`);
       }
 
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`EINVAL: invalid file path, create '${filePath}'`);
+      }
+
       const dirPath = path.dirname(relativePath);
 
       if (dirPath !== '.') {
@@ -830,6 +840,10 @@ export class FilesStore {
         throw new Error(`EINVAL: invalid folder path, create '${relativePath}'`);
       }
 
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`EINVAL: invalid folder path, create '${folderPath}'`);
+      }
+
       await webcontainer.fs.mkdir(relativePath, { recursive: true });
 
       this.files.setKey(folderPath, { type: 'folder' });
@@ -851,6 +865,10 @@ export class FilesStore {
 
       if (!relativePath) {
         throw new Error(`EINVAL: invalid file path, delete '${relativePath}'`);
+      }
+
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`EINVAL: invalid file path, delete '${filePath}'`);
       }
 
       await webcontainer.fs.rm(relativePath);
@@ -883,6 +901,10 @@ export class FilesStore {
 
       if (!relativePath) {
         throw new Error(`EINVAL: invalid folder path, delete '${relativePath}'`);
+      }
+
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`EINVAL: invalid folder path, delete '${folderPath}'`);
       }
 
       await webcontainer.fs.rm(relativePath, { recursive: true });

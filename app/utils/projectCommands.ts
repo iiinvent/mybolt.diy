@@ -55,7 +55,7 @@ export async function detectProjectCommands(files: FileContent[]): Promise<Proje
       const scripts = packageJson?.scripts || {};
       const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
-      // Check if this is a shadcn project
+      // Check if this is a shadcn project (Radix UI does NOT need an init step)
       const isShadcnProject =
         hasFileContent('components.json', 'shadcn') ||
         Object.keys(dependencies).some((dep) => dep.includes('shadcn')) ||
@@ -65,10 +65,13 @@ export async function detectProjectCommands(files: FileContent[]): Promise<Proje
       const preferredCommands = ['dev', 'start', 'preview'];
       const availableCommand = preferredCommands.find((cmd) => scripts[cmd]);
 
-      // Build setup command with non-interactive handling
+      /*
+       * Build setup command with non-interactive handling.
+       * Radix UI is consumed as plain npm dependencies, so no extra init step is needed.
+       */
       let baseSetupCommand = 'npx update-browserslist-db@latest && npm install';
 
-      // Add shadcn init if it's a shadcn project
+      // Add shadcn init only for shadcn projects
       if (isShadcnProject) {
         baseSetupCommand += ' && npx shadcn@latest init';
       }

@@ -53,7 +53,7 @@ export class PromptLibrary {
       };
     });
   }
-  static getPropmtFromLibrary(promptId: string, options: PromptOptions) {
+  static getPromptFromLibrary(promptId: string, options: PromptOptions) {
     const prompt = this.library[promptId];
 
     if (!prompt) {

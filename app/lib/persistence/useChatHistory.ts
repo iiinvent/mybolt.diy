@@ -266,9 +266,23 @@ ${value.content}
       }
 
       try {
-        await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
+        await setMessages(db, id, initialMessages, urlId ?? id, description.get(), undefined, metadata);
         chatMetadata.set(metadata);
       } catch (error) {
+        if ((error as DOMException | undefined)?.name === 'ConstraintError') {
+          try {
+            const nextUrlId = await getUrlId(db, id);
+            await setMessages(db, id, initialMessages, nextUrlId, description.get(), undefined, metadata);
+            setUrlId(nextUrlId);
+            navigateChat(nextUrlId);
+            chatMetadata.set(metadata);
+
+            return;
+          } catch {
+            // fall through
+          }
+        }
+
         toast.error('Failed to update chat metadata');
         console.error(error);
       }
@@ -332,15 +346,39 @@ ${value.content}
         return;
       }
 
-      await setMessages(
-        db,
-        finalChatId, // Use the potentially updated chatId
-        [...archivedMessages, ...messages],
-        urlId,
-        description.get(),
-        undefined,
-        chatMetadata.get(),
-      );
+      const finalUrlId = _urlId ?? finalChatId;
+
+      try {
+        await setMessages(
+          db,
+          finalChatId, // Use the potentially updated chatId
+          [...archivedMessages, ...messages],
+          finalUrlId,
+          description.get(),
+          undefined,
+          chatMetadata.get(),
+        );
+      } catch (error) {
+        if ((error as DOMException | undefined)?.name === 'ConstraintError') {
+          const nextUrlId = await getUrlId(db, finalChatId);
+          setUrlId(nextUrlId);
+          navigateChat(nextUrlId);
+
+          await setMessages(
+            db,
+            finalChatId,
+            [...archivedMessages, ...messages],
+            nextUrlId,
+            description.get(),
+            undefined,
+            chatMetadata.get(),
+          );
+
+          return;
+        }
+
+        throw error;
+      }
     },
     duplicateCurrentChat: async (listItemId: string) => {
       if (!db || (!mixedId && !listItemId)) {

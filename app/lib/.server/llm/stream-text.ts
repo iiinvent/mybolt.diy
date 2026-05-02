@@ -150,7 +150,7 @@ export async function streamText(props: {
   );
 
   let systemPrompt =
-    PromptLibrary.getPropmtFromLibrary(promptId || 'default', {
+    PromptLibrary.getPromptFromLibrary(promptId || 'default', {
       cwd: WORK_DIR,
       allowedHtmlElements: allowedHTMLElements,
       modificationTagName: MODIFICATIONS_TAG_NAME,
@@ -167,21 +167,22 @@ export async function streamText(props: {
 
     systemPrompt = `${systemPrompt}
 
-    Below is the artifact containing the context loaded into context buffer for you to have knowledge of and might need changes to fullfill current user request.
-    CONTEXT BUFFER:
-    ---
-    ${codeContext}
-    ---
-    `;
+<context_buffer>
+  The following project files have been loaded as context. Review them carefully — they may need to be modified to fulfill the current user request.
+  ---
+  ${codeContext}
+  ---
+</context_buffer>`;
 
     if (summary) {
       systemPrompt = `${systemPrompt}
-      below is the chat history till now
-      CHAT SUMMARY:
-      ---
-      ${props.summary}
-      ---
-      `;
+
+<chat_summary>
+  The following is a summary of the conversation history so far.
+  ---
+  ${props.summary}
+  ---
+</chat_summary>`;
 
       if (props.messageSliceId) {
         processedMessages = processedMessages.slice(props.messageSliceId);
@@ -215,8 +216,6 @@ export async function streamText(props: {
     ${lockedFilesListString}
     ---
     `;
-  } else {
-    console.log('No locked files found from any source for prompt.');
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
@@ -256,23 +255,6 @@ export async function streamText(props: {
         )
       : options || {};
 
-  // DEBUG: Log filtered options
-  logger.info(
-    `DEBUG STREAM: Options filtering for model "${modelDetails.name}":`,
-    JSON.stringify(
-      {
-        isReasoning,
-        originalOptions: options || {},
-        filteredOptions,
-        originalOptionsKeys: options ? Object.keys(options) : [],
-        filteredOptionsKeys: Object.keys(filteredOptions),
-        removedParams: options ? Object.keys(options).filter((key) => !(key in filteredOptions)) : [],
-      },
-      null,
-      2,
-    ),
-  );
-
   const streamParams = {
     model: provider.getModelInstance({
       model: modelDetails.name,
@@ -280,7 +262,7 @@ export async function streamText(props: {
       apiKeys,
       providerSettings,
     }),
-    system: chatMode === 'build' ? systemPrompt : discussPrompt(),
+    system: chatMode === 'discuss' ? discussPrompt() : systemPrompt,
     ...tokenParams,
     messages: convertToCoreMessages(processedMessages as any),
     ...filteredOptions,
@@ -288,24 +270,6 @@ export async function streamText(props: {
     // Set temperature to 1 for reasoning models (required by OpenAI API)
     ...(isReasoning ? { temperature: 1 } : {}),
   };
-
-  // DEBUG: Log final streaming parameters
-  logger.info(
-    `DEBUG STREAM: Final streaming params for model "${modelDetails.name}":`,
-    JSON.stringify(
-      {
-        hasTemperature: 'temperature' in streamParams,
-        hasMaxTokens: 'maxTokens' in streamParams,
-        hasMaxCompletionTokens: 'maxCompletionTokens' in streamParams,
-        paramKeys: Object.keys(streamParams).filter((key) => !['model', 'messages', 'system'].includes(key)),
-        streamParams: Object.fromEntries(
-          Object.entries(streamParams).filter(([key]) => !['model', 'messages', 'system'].includes(key)),
-        ),
-      },
-      null,
-      2,
-    ),
-  );
 
   return await _streamText(streamParams);
 }

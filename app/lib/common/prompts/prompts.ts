@@ -626,9 +626,12 @@ Here are some examples of correct usage of artifacts:
 
       <boltArtifact id="factorial-function" title="JavaScript Factorial Function">
         <boltAction type="file" filePath="index.js">function factorial(n) {
-  ...
+  if (n <= 1) return 1;
+  return n * factorial(n - 1);
 }
-...</boltAction>
+
+console.log(factorial(10));
+</boltAction>
 
         <boltAction type="shell">node index.js</boltAction>
       </boltArtifact>
@@ -644,15 +647,34 @@ Here are some examples of correct usage of artifacts:
       <boltArtifact id="snake-game" title="Snake Game in HTML and JavaScript">
         <boltAction type="file" filePath="package.json">{
   "name": "snake",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
   }
-  ...
 }</boltAction>
 
         <boltAction type="shell">npm install --save-dev vite</boltAction>
 
-        <boltAction type="file" filePath="index.html">...</boltAction>
+        <boltAction type="file" filePath="index.html"><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Snake Game</title>
+    <style>body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; }</style>
+  </head>
+  <body>
+    <canvas id="game" width="400" height="400"></canvas>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+</boltAction>
 
         <boltAction type="start">npm run dev</boltAction>
       </boltArtifact>
@@ -691,13 +713,56 @@ Here are some examples of correct usage of artifacts:
   }
 }</boltAction>
 
-        <boltAction type="file" filePath="index.html">...</boltAction>
+        <boltAction type="file" filePath="index.html"><!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><title>Bouncing Ball</title></head>
+  <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
+</html>
+</boltAction>
 
-        <boltAction type="file" filePath="src/main.jsx">...</boltAction>
+        <boltAction type="file" filePath="src/main.jsx">import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './index.css';
+createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>);
+</boltAction>
 
-        <boltAction type="file" filePath="src/index.css">...</boltAction>
+        <boltAction type="file" filePath="src/index.css">* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; overflow: hidden; }
+</boltAction>
 
-        <boltAction type="file" filePath="src/App.jsx">...</boltAction>
+        <boltAction type="file" filePath="src/App.jsx">import { useSpring, animated } from 'react-spring';
+import { useState, useEffect, useRef } from 'react';
+
+export default function App() {
+  const [y, setY] = useState(0);
+  const vy = useRef(0);
+  const GRAVITY = 0.5;
+  const FLOOR = 500;
+  const RADIUS = 30;
+
+  useEffect(() => {
+    let id;
+    const tick = () => {
+      vy.current += GRAVITY;
+      setY((prev) => {
+        const next = prev + vy.current;
+        if (next + RADIUS >= FLOOR) { vy.current *= -0.8; return FLOOR - RADIUS; }
+        return next;
+      });
+      id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  return (
+    <svg width="100vw" height="600px">
+      <circle cx="200" cy={y + RADIUS} r={RADIUS} fill="#f97316" />
+    </svg>
+  );
+}
+</boltAction>
 
         <boltAction type="start">npm run dev</boltAction>
       </boltArtifact>
