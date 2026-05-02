@@ -3,13 +3,10 @@ import { streamText } from '~/lib/.server/llm/stream-text';
 import { stripIndents } from '~/utils/stripIndent';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
-import { createScopedLogger } from '~/utils/logger';
 
 export async function action(args: ActionFunctionArgs) {
   return enhancerAction(args);
 }
-
-const logger = createScopedLogger('api.enhancher');
 
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
   const { message, model, provider } = await request.json<{
@@ -82,21 +79,6 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
       providerSettings,
       options: {},
     });
-
-    // Handle streaming errors in a non-blocking way
-    (async () => {
-      try {
-        for await (const part of result.fullStream) {
-          if (part.type === 'error') {
-            const error: any = part.error;
-            logger.error('Streaming error:', error);
-            break;
-          }
-        }
-      } catch (error) {
-        logger.error('Error processing stream:', error);
-      }
-    })();
 
     // Return the text stream directly since it's already text data
     return new Response(result.textStream, {
