@@ -219,7 +219,7 @@ export class ActionRunner {
                 return;
               }
 
-              this.#updateAction(actionId, { status: 'failed', error: 'Action failed' });
+              this.#updateAction(actionId, { status: 'failed', error: err.message || 'Action failed' });
               logger.error(`[${action.type}]:Action failed\n\n`, err);
 
               if (!(err instanceof ActionCommandError)) {
@@ -252,7 +252,8 @@ export class ActionRunner {
         return;
       }
 
-      this.#updateAction(actionId, { status: 'failed', error: 'Action failed' });
+      const errorMessage = error instanceof Error ? error.message : 'Action failed';
+      this.#updateAction(actionId, { status: 'failed', error: errorMessage });
       logger.error(`[${action.type}]:Action failed\n\n`, error);
 
       if (!(error instanceof ActionCommandError)) {
@@ -341,8 +342,7 @@ export class ActionRunner {
     const relativePath = nodePath.relative(webcontainer.workdir, action.filePath);
 
     if (!relativePath || relativePath.startsWith('..') || nodePath.isAbsolute(relativePath)) {
-      logger.error(`Invalid file path, write '${action.filePath}'`);
-      return;
+      throw new Error(`Invalid file path, write '${action.filePath}'`);
     }
 
     const contentToWrite = this.#sanitizeFileContent(action.content);
@@ -366,6 +366,7 @@ export class ActionRunner {
       logger.debug(`File written ${relativePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);
+      throw error;
     }
   }
 

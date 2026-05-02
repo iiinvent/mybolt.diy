@@ -247,12 +247,19 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
 
   private _wrapInArtifact(artifactId: string, filePath: string, content: string): string {
     const title = filePath.split('/').pop() || 'File';
+    const escapedArtifactId = this._escapeAttribute(artifactId);
+    const escapedTitle = this._escapeAttribute(title);
+    const escapedFilePath = this._escapeAttribute(filePath);
 
-    return `<boltArtifact id="${artifactId}" title="${title}" type="bundled">
-<boltAction type="file" filePath="${filePath}">
+    return `<boltArtifact id="${escapedArtifactId}" title="${escapedTitle}" type="bundled">
+<boltAction type="file" filePath="${escapedFilePath}">
 ${content}
 </boltAction>
 </boltArtifact>`;
+  }
+
+  private _escapeAttribute(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   private _wrapInShellAction(content: string, messageId: string): string {

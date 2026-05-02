@@ -146,7 +146,7 @@ export const Markdown = memo(
                 data-path={path}
                 data-href={href}
                 onClick={() => {
-                  if (type === 'file') {
+                  if (type === 'file' && typeof path === 'string') {
                     openArtifactInWorkbench(path);
                   } else if (type === 'message' && append) {
                     append({

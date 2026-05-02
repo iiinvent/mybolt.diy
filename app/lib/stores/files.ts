@@ -780,9 +780,8 @@ export class FilesStore {
   }
 
   async createFile(filePath: string, content: string | Uint8Array = '') {
-    const webcontainer = await this.#webcontainer;
-
     try {
+      const webcontainer = await this.#webcontainer;
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
       if (!relativePath) {

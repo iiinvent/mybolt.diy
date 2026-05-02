@@ -527,6 +527,14 @@ export class WorkbenchStore {
 
     this.addToExecutionQueue(() => this._addAction(data));
   }
+  #normalizeFileActionPath(filePath: string, workdir: string) {
+    if (filePath.startsWith(workdir)) {
+      return filePath;
+    }
+
+    return path.join(workdir, filePath.replace(/^\/+/, ''));
+  }
+
   async _addAction(data: ActionCallbackData) {
     const { artifactId } = data;
 
@@ -538,9 +546,7 @@ export class WorkbenchStore {
 
     if (data.action.type === 'file') {
       const wc = await webcontainer;
-      const normalizedFilePath = data.action.filePath.startsWith(wc.workdir)
-        ? data.action.filePath
-        : path.join(wc.workdir, data.action.filePath.replace(/^\/+/, ''));
+      const normalizedFilePath = this.#normalizeFileActionPath(data.action.filePath, wc.workdir);
 
       return artifact.runner.addAction({
         ...data,
@@ -572,9 +578,7 @@ export class WorkbenchStore {
 
     if (data.action.type === 'file') {
       const wc = await webcontainer;
-      const normalizedFilePath = data.action.filePath.startsWith(wc.workdir)
-        ? data.action.filePath
-        : path.join(wc.workdir, data.action.filePath.replace(/^\/+/, ''));
+      const normalizedFilePath = this.#normalizeFileActionPath(data.action.filePath, wc.workdir);
 
       data = {
         ...data,
@@ -585,7 +589,12 @@ export class WorkbenchStore {
       };
     }
 
-    const action = artifact.runner.actions.get()[data.actionId];
+    let action = artifact.runner.actions.get()[data.actionId];
+
+    if (!action && data.action.type === 'file') {
+      artifact.runner.addAction(data);
+      action = artifact.runner.actions.get()[data.actionId];
+    }
 
     if (!action || action.executed) {
       return;
