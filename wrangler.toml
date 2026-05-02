@@ -4,4 +4,3 @@ compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2026-05-02"
 pages_build_output_dir = "./build/client"
 send_metrics = false
-main = "./build/client/index.js"
