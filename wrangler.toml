@@ -3,19 +3,4 @@ name = "mybolt-diy"
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2025-10-16"
 pages_build_output_dir = "./build/client"
-send_metrics = true
-
-[observability]
-enabled = false
-head_sampling_rate = 1
-
-[observability.logs]
-enabled = true
-head_sampling_rate = 1
-persist = true
-invocation_logs = true
-
-[observability.traces]
-enabled = false
-persist = true
-head_sampling_rate = 1
+send_metrics = false
