@@ -18,11 +18,22 @@ export default defineConfig((config) => {
     },
     build: {
       target: 'esnext',
+      chunkSizeWarningLimit: 4096,
+      rollupOptions: {
+        onwarn(warning, warn) {
+          if (warning.code === 'EMPTY_BUNDLE') return;
+          if (warning.code === 'INVALID_ANNOTATION') return;
+          if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+          if (warning.message?.includes('dynamic import will not move module')) return;
+          warn(warning);
+        },
+      },
     },
-    ssr: {
-      external: ['isomorphic-git'],
+    optimizeDeps: {
+      exclude: ['istextorbinary'],
     },
     plugins: [
+      suppressBrowserExternalWarnings(['node:crypto', 'path', 'crypto']),
       nodePolyfills({
         include: ['buffer', 'process', 'util', 'stream'],
         globals: {
@@ -87,6 +98,22 @@ export default defineConfig((config) => {
     },
   };
 });
+
+function suppressBrowserExternalWarnings(modules: string[]) {
+  return {
+    name: 'suppress-browser-external-warnings',
+    enforce: 'pre' as const,
+    configResolved(config: any) {
+      const original = config.logger.warn.bind(config.logger);
+      config.logger.warn = (msg: string, ...args: any[]) => {
+        if (modules.some((m) => msg.includes(`"${m}"`) && msg.includes('externalized for browser'))) {
+          return;
+        }
+        original(msg, ...args);
+      };
+    },
+  };
+}
 
 function chrome129IssuePlugin() {
   return {

@@ -1,12 +1,16 @@
 import type { WebContainer } from '@webcontainer/api';
 import { atom } from 'nanostores';
+import { webcontainer } from '~/lib/webcontainer';
 
 // Extend Window interface to include our custom property
 declare global {
   interface Window {
     _tabId?: string;
+    _boltPreviewStorageSyncInstalled?: boolean;
   }
 }
+
+const STORAGE_SYNC_EVENT = 'bolt-preview-storage-sync';
 
 export interface PreviewInfo {
   port: number;
@@ -62,17 +66,27 @@ export class PreviewsStore {
       };
     }
 
-    // Override localStorage setItem to catch all changes
     if (typeof window !== 'undefined') {
-      const originalSetItem = localStorage.setItem;
-
-      localStorage.setItem = (...args) => {
-        originalSetItem.apply(localStorage, args);
-        this._broadcastStorageSync();
-      };
+      window.addEventListener(STORAGE_SYNC_EVENT, () => this._broadcastStorageSync());
     }
 
-    this.#init();
+    // Override localStorage setItem to catch all changes
+    if (typeof window !== 'undefined' && !window._boltPreviewStorageSyncInstalled) {
+      try {
+        const originalSetItem = Object.getPrototypeOf(localStorage).setItem;
+
+        Object.getPrototypeOf(localStorage).setItem = (...args: [string, string]) => {
+          originalSetItem.apply(localStorage, args);
+          window.dispatchEvent(new Event(STORAGE_SYNC_EVENT));
+        };
+
+        window._boltPreviewStorageSyncInstalled = true;
+      } catch (error) {
+        console.warn('[Preview] Failed to install storage sync hook:', error);
+      }
+    }
+
+    void this.#init();
   }
 
   #maybeCreateChannel(name: string): BroadcastChannel | undefined {
@@ -167,7 +181,14 @@ export class PreviewsStore {
   }
 
   async #init() {
-    const webcontainer = await this.#webcontainer;
+    let webcontainer: WebContainer;
+
+    try {
+      webcontainer = await this.#webcontainer;
+    } catch (error) {
+      console.error('[Preview] Failed to initialize WebContainer previews:', error);
+      return;
+    }
 
     // Listen for server ready events
     webcontainer.on('server-ready', (port, url) => {
@@ -298,15 +319,19 @@ export class PreviewsStore {
 }
 
 // Create a singleton instance
-let previewsStore: PreviewsStore | null = null;
+let previewsStore: PreviewsStore | null = import.meta.hot?.data.previewsStore ?? null;
+
+if (import.meta.hot) {
+  import.meta.hot.data.previewsStore = previewsStore;
+}
 
 export function usePreviewStore() {
   if (!previewsStore) {
-    /*
-     * Initialize with a Promise that resolves to WebContainer
-     * This should match how you're initializing WebContainer elsewhere
-     */
-    previewsStore = new PreviewsStore(Promise.resolve({} as WebContainer));
+    previewsStore = new PreviewsStore(webcontainer);
+
+    if (import.meta.hot) {
+      import.meta.hot.data.previewsStore = previewsStore;
+    }
   }
 
   return previewsStore;

@@ -57,6 +57,11 @@ if (!import.meta.env.SSR) {
         });
 
         return webcontainer;
+      })
+      .catch((error) => {
+        webcontainerContext.loaded = false;
+        console.error('Failed to boot WebContainer:', error);
+        throw error;
       });
 
   if (import.meta.hot) {

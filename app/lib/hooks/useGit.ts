@@ -1,7 +1,8 @@
 import type { WebContainer } from '@webcontainer/api';
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { webcontainer as webcontainerPromise } from '~/lib/webcontainer';
-import git, { type GitAuth, type PromiseFsClient } from 'isomorphic-git';
+import * as git from 'isomorphic-git';
+import type { GitAuth, PromiseFsClient } from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
@@ -34,12 +35,17 @@ export function useGit() {
   const [fs, setFs] = useState<PromiseFsClient>();
   const fileData = useRef<Record<string, { data: any; encoding?: string }>>({});
   useEffect(() => {
-    webcontainerPromise.then((container) => {
-      fileData.current = {};
-      setWebcontainer(container);
-      setFs(getFs(container, fileData));
-      setReady(true);
-    });
+    webcontainerPromise
+      .then((container) => {
+        fileData.current = {};
+        setWebcontainer(container);
+        setFs(getFs(container, fileData));
+        setReady(true);
+      })
+      .catch((error) => {
+        console.error('Failed to initialize git integration:', error);
+        setReady(false);
+      });
   }, []);
 
   const gitClone = useCallback(

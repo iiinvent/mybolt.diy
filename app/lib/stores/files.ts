@@ -120,7 +120,7 @@ export class FilesStore {
       observer.observe(document, { subtree: true, childList: true });
     }
 
-    this.#init();
+    void this.#init();
   }
 
   /**
@@ -547,9 +547,8 @@ export class FilesStore {
   }
 
   async saveFile(filePath: string, content: string) {
-    const webcontainer = await this.#webcontainer;
-
     try {
+      const webcontainer = await this.#webcontainer;
       const relativePath = path.relative(webcontainer.workdir, filePath);
 
       if (!relativePath) {
@@ -596,7 +595,14 @@ export class FilesStore {
   }
 
   async #init() {
-    const webcontainer = await this.#webcontainer;
+    let webcontainer: WebContainer;
+
+    try {
+      webcontainer = await this.#webcontainer;
+    } catch (error) {
+      logger.error('Failed to initialize files store', error);
+      return;
+    }
 
     // Clean up any files that were previously deleted
     this.#cleanupDeletedFiles();

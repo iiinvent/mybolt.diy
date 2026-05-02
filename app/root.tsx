@@ -14,6 +14,7 @@ import { cssTransition, ToastContainer } from 'react-toastify';
 import reactToastifyStyles from 'react-toastify/dist/ReactToastify.css?url';
 import globalStyles from './styles/index.scss?url';
 import xtermStyles from '@xterm/xterm/css/xterm.css?url';
+import { logStore } from './lib/stores/logs';
 
 import 'virtual:uno.css';
 
@@ -80,7 +81,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <ClientOnly>{() => <DndProvider backend={HTML5Backend}>{children}</DndProvider>}</ClientOnly>
+      <ClientOnly
+        fallback={
+          <div className="flex h-full w-full items-center justify-center bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary">
+            Loading...
+          </div>
+        }
+      >
+        {() => <DndProvider backend={HTML5Backend}>{children}</DndProvider>}
+      </ClientOnly>
       <ToastContainer
         closeButton={({ closeToast }) => {
           return (
@@ -111,8 +120,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </>
   );
 }
-
-import { logStore } from './lib/stores/logs';
 
 export default function App() {
   const theme = useStore(themeStore);
