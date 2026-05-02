@@ -149,7 +149,7 @@ export const FileTree = memo(
             case 'file': {
               return (
                 <File
-                  key={fileOrFolder.id}
+                  key={fileOrFolder.fullPath}
                   selected={selectedFile === fileOrFolder.fullPath}
                   file={fileOrFolder}
                   unsavedChanges={unsavedFiles instanceof Set && unsavedFiles.has(fileOrFolder.fullPath)}
@@ -169,7 +169,7 @@ export const FileTree = memo(
             case 'folder': {
               return (
                 <Folder
-                  key={fileOrFolder.id}
+                  key={fileOrFolder.fullPath}
                   folder={fileOrFolder}
                   selected={allowFolderSelection && selectedFile === fileOrFolder.fullPath}
                   collapsed={collapsedFolders.has(fileOrFolder.fullPath)}

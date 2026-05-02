@@ -364,7 +364,7 @@ export class WorkbenchStore {
       return success;
     } catch (error) {
       console.error('Failed to create file:', error);
-      throw error;
+      return false;
     }
   }
 
@@ -373,7 +373,7 @@ export class WorkbenchStore {
       return await this.#filesStore.createFolder(folderPath);
     } catch (error) {
       console.error('Failed to create folder:', error);
-      throw error;
+      return false;
     }
   }
 
@@ -410,7 +410,7 @@ export class WorkbenchStore {
       return success;
     } catch (error) {
       console.error('Failed to delete file:', error);
-      throw error;
+      return false;
     }
   }
 
@@ -453,7 +453,7 @@ export class WorkbenchStore {
       return success;
     } catch (error) {
       console.error('Failed to delete folder:', error);
-      throw error;
+      return false;
     }
   }
 
@@ -536,6 +536,21 @@ export class WorkbenchStore {
       unreachable('Artifact not found');
     }
 
+    if (data.action.type === 'file') {
+      const wc = await webcontainer;
+      const normalizedFilePath = data.action.filePath.startsWith(wc.workdir)
+        ? data.action.filePath
+        : path.join(wc.workdir, data.action.filePath.replace(/^\/+/, ''));
+
+      return artifact.runner.addAction({
+        ...data,
+        action: {
+          ...data.action,
+          filePath: normalizedFilePath,
+        },
+      });
+    }
+
     return artifact.runner.addAction(data);
   }
 
@@ -555,6 +570,21 @@ export class WorkbenchStore {
       unreachable('Artifact not found');
     }
 
+    if (data.action.type === 'file') {
+      const wc = await webcontainer;
+      const normalizedFilePath = data.action.filePath.startsWith(wc.workdir)
+        ? data.action.filePath
+        : path.join(wc.workdir, data.action.filePath.replace(/^\/+/, ''));
+
+      data = {
+        ...data,
+        action: {
+          ...data.action,
+          filePath: normalizedFilePath,
+        },
+      };
+    }
+
     const action = artifact.runner.actions.get()[data.actionId];
 
     if (!action || action.executed) {
@@ -562,8 +592,7 @@ export class WorkbenchStore {
     }
 
     if (data.action.type === 'file') {
-      const wc = await webcontainer;
-      const fullPath = path.join(wc.workdir, data.action.filePath);
+      const fullPath = data.action.filePath;
 
       /*
        * For scoped locks, we would need to implement diff checking here

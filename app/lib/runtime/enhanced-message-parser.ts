@@ -32,7 +32,21 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     super(options);
   }
 
+  private _maybeUnescapeBoltTags(input: string): string {
+    /*
+     * Some pipelines escape bolt tags (e.g. &lt;boltArtifact&gt;) before they reach the parser.
+     * We only unescape when we detect escaped bolt markers to avoid altering normal HTML.
+     */
+    if (!input.includes('&lt;boltArtifact') && !input.includes('&lt;boltAction')) {
+      return input;
+    }
+
+    return input.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  }
+
   parse(messageId: string, input: string): string {
+    input = this._maybeUnescapeBoltTags(input);
+
     // First try the normal parsing
     let output = super.parse(messageId, input);
 
@@ -51,7 +65,13 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
   }
 
   private _hasDetectedArtifacts(input: string): boolean {
-    return input.includes('<boltArtifact') || input.includes('</boltArtifact>');
+    return (
+      input.includes('<boltArtifact') ||
+      input.includes('</boltArtifact>') ||
+      input.includes('&lt;boltArtifact') ||
+      input.includes('&lt;/boltArtifact') ||
+      input.includes('&lt;boltAction')
+    );
   }
 
   private _detectAndWrapCodeBlocks(messageId: string, input: string): string {
@@ -99,6 +119,25 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
         regex:
           /```(?:json|jsx?|tsx?|html?|vue|svelte)\n(\{[\s\S]*?"(?:name|version|scripts|dependencies|devDependencies)"[\s\S]*?\}|<\w+[^>]*>[\s\S]*?<\/\w+>[\s\S]*?)```/gi,
         type: 'structured_file',
+      },
+
+      // Pattern 6: Markdown heading followed by code block (### src/App.tsx)
+      {
+        regex: /(?:^|\n)#{1,6}\s+[`'"]*([\/\w\-\.]+\.\w+)[`'"]*\s*\n+```(\w*)\n([\s\S]*?)```/gim,
+        type: 'heading_filename',
+      },
+
+      // Pattern 7: Bolded filename followed by code block (**src/App.tsx**)
+      {
+        regex: /(?:^|\n)\*{1,2}([\/\w\-\.]+\.\w+)\*{1,2}:?\s*\n+```(\w*)\n([\s\S]*?)```/gim,
+        type: 'bold_filename',
+      },
+
+      // Pattern 8: "File:" / "Filename:" / "Path:" label followed by code block
+      {
+        regex:
+          /(?:^|\n)(?:\*{0,2})(?:file|filename|filepath|path)(?:\*{0,2})\s*[:=-]\s*[`'"]*([\/\w\-\.]+\.\w+)[`'"]*\s*\n+```(\w*)\n([\s\S]*?)```/gim,
+        type: 'label_filename',
       },
     ];
 
@@ -148,7 +187,12 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
         if (!this._hasFileContext(enhanced, match)) {
           // If no clear file context, skip unless it's an explicit file pattern
           const isExplicitFilePattern =
-            pattern.type === 'explicit_create' || pattern.type === 'comment_filename' || pattern.type === 'file_path';
+            pattern.type === 'explicit_create' ||
+            pattern.type === 'comment_filename' ||
+            pattern.type === 'file_path' ||
+            pattern.type === 'heading_filename' ||
+            pattern.type === 'bold_filename' ||
+            pattern.type === 'label_filename';
 
           if (!isExplicitFilePattern) {
             return match; // Return original if no context

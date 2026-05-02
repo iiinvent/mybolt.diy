@@ -74,6 +74,30 @@ export class ActionRunner {
   onDeployAlert?: (alert: DeployAlert) => void;
   buildOutput?: { path: string; exitCode: number; output: string };
 
+  #sanitizeFileContent(content: string | Uint8Array): string | Uint8Array {
+    if (content instanceof Uint8Array) {
+      return content;
+    }
+
+    let sanitized = content;
+
+    // Unescape potentially escaped tags first
+    sanitized = sanitized.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+    // Strip any bolt tags if they leaked into the action stream
+    const tagMarkers = ['<boltArtifact', '</boltArtifact', '<boltAction', '</boltAction'];
+    const firstTagIndex = tagMarkers
+      .map((m) => sanitized.indexOf(m))
+      .filter((i) => i !== -1)
+      .reduce((min, i) => Math.min(min, i), Number.POSITIVE_INFINITY);
+
+    if (Number.isFinite(firstTagIndex)) {
+      sanitized = sanitized.slice(0, firstTagIndex);
+    }
+
+    return sanitized;
+  }
+
   constructor(
     webcontainerPromise: Promise<WebContainer>,
     getShellTerminal: () => BoltShell,
@@ -316,6 +340,13 @@ export class ActionRunner {
     const webcontainer = await this.#webcontainer;
     const relativePath = nodePath.relative(webcontainer.workdir, action.filePath);
 
+    if (!relativePath || relativePath.startsWith('..') || nodePath.isAbsolute(relativePath)) {
+      logger.error(`Invalid file path, write '${action.filePath}'`);
+      return;
+    }
+
+    const contentToWrite = this.#sanitizeFileContent(action.content);
+
     let folder = nodePath.dirname(relativePath);
 
     // remove trailing slashes
@@ -331,7 +362,7 @@ export class ActionRunner {
     }
 
     try {
-      await webcontainer.fs.writeFile(relativePath, action.content);
+      await webcontainer.fs.writeFile(relativePath, contentToWrite);
       logger.debug(`File written ${relativePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);

@@ -80,19 +80,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
       env: context.cloudflare?.env as any,
       apiKeys,
       providerSettings,
-      options: {
-        system:
-          'You are a senior software principal architect, you should help the user analyse the user query and enrich it with the necessary context and constraints to make it more specific, actionable, and effective. You should also ensure that the prompt is self-contained and uses professional language. Your response should ONLY contain the enhanced prompt text. Do not include any explanations, metadata, or wrapper tags.',
-
-        /*
-         * onError: (event) => {
-         *   throw new Response(null, {
-         *     status: 500,
-         *     statusText: 'Internal Server Error',
-         *   });
-         * }
-         */
-      },
+      options: {},
     });
 
     // Handle streaming errors in a non-blocking way

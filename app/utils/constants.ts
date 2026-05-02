@@ -65,6 +65,22 @@ export const STARTER_TEMPLATES: Template[] = [
     icon: 'i-bolt:shadcn',
   },
   {
+    name: 'NextJS Radix',
+    label: 'Next.js with Radix UI',
+    description: 'Next.js starter fullstack template using Radix UI primitives (unstyled, accessible)',
+    githubRepo: 'xKevIsDev/bolt-nextjs-radix-template',
+    tags: ['nextjs', 'react', 'typescript', 'radix', 'radix-ui', 'tailwind'],
+    icon: 'i-bolt:nextjs',
+  },
+  {
+    name: 'Vite Radix',
+    label: 'Vite with Radix UI',
+    description: 'Vite starter fullstack template using Radix UI primitives (unstyled, accessible)',
+    githubRepo: 'xKevIsDev/vite-radix',
+    tags: ['vite', 'react', 'typescript', 'radix', 'radix-ui', 'tailwind'],
+    icon: 'i-bolt:react',
+  },
+  {
     name: 'Qwik Typescript',
     label: 'Qwik TypeScript',
     description: 'Qwik framework starter with TypeScript for building resumable applications',
