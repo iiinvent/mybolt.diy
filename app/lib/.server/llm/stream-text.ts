@@ -74,6 +74,7 @@ export async function streamText(props: {
     files,
     providerSettings,
     promptId,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     contextOptimization,
     contextFiles,
     summary,
@@ -162,7 +163,7 @@ export async function streamText(props: {
       },
     }) ?? getSystemPrompt();
 
-  if (chatMode === 'build' && contextFiles && contextOptimization) {
+  if (chatMode === 'build' && contextFiles) {
     const codeContext = createFilesContext(contextFiles, true);
 
     systemPrompt = `${systemPrompt}
