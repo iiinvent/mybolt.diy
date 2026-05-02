@@ -18,6 +18,9 @@ import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, SupabaseAlert } from '~/types/actions';
+import { createScopedLogger } from '~/utils/logger';
+
+const logger = createScopedLogger('WorkbenchStore');
 
 const { saveAs } = fileSaver;
 
@@ -54,7 +57,6 @@ export class WorkbenchStore {
     import.meta.hot?.data.supabaseAlert ?? atom<SupabaseAlert | undefined>(undefined);
   deployAlert: WritableAtom<DeployAlert | undefined> =
     import.meta.hot?.data.deployAlert ?? atom<DeployAlert | undefined>(undefined);
-  modifiedFiles = new Set<string>();
   artifactIdList: string[] = [];
   #globalExecutionQueue = Promise.resolve();
   constructor() {
@@ -80,7 +82,11 @@ export class WorkbenchStore {
   }
 
   addToExecutionQueue(callback: () => Promise<void>) {
-    this.#globalExecutionQueue = this.#globalExecutionQueue.then(() => callback());
+    this.#globalExecutionQueue = this.#globalExecutionQueue
+      .then(() => callback())
+      .catch((error) => {
+        logger.error('Execution queue error:', error);
+      });
   }
 
   get previews() {
@@ -120,7 +126,7 @@ export class WorkbenchStore {
     this.actionAlert.set(undefined);
   }
 
-  get SupabaseAlert() {
+  get supabaseAlertStore() {
     return this.supabaseAlert;
   }
 
@@ -128,7 +134,7 @@ export class WorkbenchStore {
     this.supabaseAlert.set(undefined);
   }
 
-  get DeployAlert() {
+  get deployAlertStore() {
     return this.deployAlert;
   }
 
@@ -458,7 +464,17 @@ export class WorkbenchStore {
   }
 
   abortAllActions() {
-    // TODO: what do we wanna do and how do we wanna recover from this?
+    const artifacts = this.artifacts.get();
+
+    for (const artifact of Object.values(artifacts)) {
+      const actions = artifact.runner.actions.get();
+
+      for (const action of Object.values(actions)) {
+        if (action.status === 'running' || action.status === 'pending') {
+          action.abort();
+        }
+      }
+    }
   }
 
   setReloadedMessages(messages: string[]) {
@@ -617,20 +633,15 @@ export class WorkbenchStore {
         this.currentView.set('code');
       }
 
-      const doc = this.#editorStore.documents.get()[fullPath];
-
-      if (!doc) {
-        await artifact.runner.runAction(data, isStreaming);
-      }
-
       this.#editorStore.updateFile(fullPath, data.action.content);
-
-      if (!isStreaming && data.action.content) {
-        await this.saveFile(fullPath);
-      }
 
       if (!isStreaming) {
         await artifact.runner.runAction(data);
+
+        if (data.action.content) {
+          await this.saveFile(fullPath);
+        }
+
         this.resetAllFileModifications();
       }
     } else {
@@ -659,8 +670,9 @@ export class WorkbenchStore {
     const uniqueProjectName = `${projectName}_${timestampHash}`;
 
     for (const [filePath, dirent] of Object.entries(files)) {
-      if (dirent?.type === 'file' && !dirent.isBinary) {
+      if (dirent?.type === 'file') {
         const relativePath = extractRelativePath(filePath);
+        const fileContent = dirent.isBinary ? Buffer.from(dirent.content, 'base64') : dirent.content;
 
         // split the path into segments
         const pathSegments = relativePath.split('/');
@@ -672,10 +684,10 @@ export class WorkbenchStore {
           for (let i = 0; i < pathSegments.length - 1; i++) {
             currentFolder = currentFolder.folder(pathSegments[i])!;
           }
-          currentFolder.file(pathSegments[pathSegments.length - 1], dirent.content);
+          currentFolder.file(pathSegments[pathSegments.length - 1], fileContent);
         } else {
           // if there's only one segment, it's a file in the root
-          zip.file(relativePath, dirent.content);
+          zip.file(relativePath, fileContent);
         }
       }
     }
@@ -690,8 +702,9 @@ export class WorkbenchStore {
     const syncedFiles = [];
 
     for (const [filePath, dirent] of Object.entries(files)) {
-      if (dirent?.type === 'file' && !dirent.isBinary) {
+      if (dirent?.type === 'file') {
         const relativePath = extractRelativePath(filePath);
+        const fileContent = dirent.isBinary ? Buffer.from(dirent.content, 'base64') : dirent.content;
         const pathSegments = relativePath.split('/');
         let currentHandle = targetHandle;
 
@@ -706,7 +719,7 @@ export class WorkbenchStore {
 
         // write the file content
         const writable = await fileHandle.createWritable();
-        await writable.write(dirent.content);
+        await writable.write(fileContent);
         await writable.close();
 
         syncedFiles.push(relativePath);
@@ -808,13 +821,6 @@ export class WorkbenchStore {
             console.error('Cannot create repo:', error);
             throw error; // Some other error occurred
           }
-        }
-
-        // Get all files
-        const files = this.files.get();
-
-        if (!files || Object.keys(files).length === 0) {
-          throw new Error('No files found to push');
         }
 
         // Function to push files with retry logic
