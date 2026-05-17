@@ -39,12 +39,12 @@ function makeNonInteractive(command: string): string {
 }
 
 export async function detectProjectCommands(files: FileContent[]): Promise<ProjectCommands> {
-  const hasFile = (name: string) => files.some((f) => f.path.endsWith(name));
+  const hasFile = (name: string) => files.some((f) => Boolean(f.path?.endsWith(name)));
   const hasFileContent = (name: string, content: string) =>
-    files.some((f) => f.path.endsWith(name) && f.content.includes(content));
+    files.some((f) => Boolean(f.path?.endsWith(name)) && f.content.includes(content));
 
   if (hasFile('package.json')) {
-    const packageJsonFile = files.find((f) => f.path.endsWith('package.json'));
+    const packageJsonFile = files.find((f) => f.path?.endsWith('package.json'));
 
     if (!packageJsonFile) {
       return { type: '', setupCommand: '', followupMessage: '' };
@@ -79,11 +79,21 @@ export async function detectProjectCommands(files: FileContent[]): Promise<Proje
       const setupCommand = makeNonInteractive(baseSetupCommand);
 
       if (availableCommand) {
+        const scriptBody = String(scripts[availableCommand] ?? '').trim();
+        /*
+         * WebContainer's jsh often fails with "command not found: vite" when package.json
+         * uses a bare "vite" script (npm's PATH for lifecycle scripts can differ). Prefer npx.
+         */
+        const startCommand =
+          /^vite(\s|$)/.test(scriptBody) && !scriptBody.startsWith('npx ')
+            ? `npx ${scriptBody}`
+            : `npm run ${availableCommand}`;
+
         return {
           type: 'Node.js',
           setupCommand,
-          startCommand: `npm run ${availableCommand}`,
-          followupMessage: `Found "${availableCommand}" script in package.json. Running "npm run ${availableCommand}" after installation.`,
+          startCommand,
+          followupMessage: `Found "${availableCommand}" script in package.json. Running "${startCommand}" after installation.`,
         };
       }
 

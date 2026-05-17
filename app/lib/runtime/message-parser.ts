@@ -150,7 +150,7 @@ export class StreamingMessageParser {
 
             if ('type' in currentAction && currentAction.type === 'file') {
               // Remove markdown code block syntax if present and file is not markdown
-              if (!currentAction.filePath.endsWith('.md')) {
+              if (!currentAction.filePath?.endsWith('.md')) {
                 content = cleanoutMarkdownSyntax(content);
                 content = cleanEscapedTags(content);
               }
@@ -182,7 +182,7 @@ export class StreamingMessageParser {
             if ('type' in currentAction && currentAction.type === 'file') {
               let content = input.slice(i);
 
-              if (!currentAction.filePath.endsWith('.md')) {
+              if (!currentAction.filePath?.endsWith('.md')) {
                 content = cleanoutMarkdownSyntax(content);
                 content = cleanEscapedTags(content);
               }
@@ -382,8 +382,14 @@ export class StreamingMessageParser {
   }
 
   #extractAttribute(tag: string, attributeName: string): string | undefined {
-    const match = tag.match(new RegExp(`${attributeName}="([^"]*)"`, 'i'));
-    return match ? match[1] : undefined;
+    const escaped = attributeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const doubleQuoted = tag.match(new RegExp(`${escaped}="([^"]*)"`, 'i'));
+    if (doubleQuoted) {
+      return doubleQuoted[1];
+    }
+
+    const singleQuoted = tag.match(new RegExp(`${escaped}='([^']*)'`, 'i'));
+    return singleQuoted ? singleQuoted[1] : undefined;
   }
 }
 
