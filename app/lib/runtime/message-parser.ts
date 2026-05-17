@@ -384,11 +384,13 @@ export class StreamingMessageParser {
   #extractAttribute(tag: string, attributeName: string): string | undefined {
     const escaped = attributeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const doubleQuoted = tag.match(new RegExp(`${escaped}="([^"]*)"`, 'i'));
+
     if (doubleQuoted) {
       return doubleQuoted[1];
     }
 
     const singleQuoted = tag.match(new RegExp(`${escaped}='([^']*)'`, 'i'));
+
     return singleQuoted ? singleQuoted[1] : undefined;
   }
 }

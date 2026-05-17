@@ -80,6 +80,7 @@ export async function detectProjectCommands(files: FileContent[]): Promise<Proje
 
       if (availableCommand) {
         const scriptBody = String(scripts[availableCommand] ?? '').trim();
+
         /*
          * WebContainer's jsh often fails with "command not found: vite" when package.json
          * uses a bare "vite" script (npm's PATH for lifecycle scripts can differ). Prefer npx.
